@@ -17,7 +17,7 @@ reward_destination = -1
 
 # ---------------------------------------------------
 
-Q = np.zeros((nrows, ncols, nact), dtype=np.float)
+Q_lookup = np.zeros((nrows, ncols, nact), dtype=np.float)
 
 
 def go_to_start():
@@ -44,37 +44,37 @@ def move(x, y, a):
 
     if x == 0 and y == nrows and a == 0:
         # start location
-        x1 = x
-        y1 = y - 1
-        return x1, y1, state
+        next_x = x
+        next_y = y - 1
+        return next_x, next_y, state
     elif x == ncols - 1 and y == nrows - 1 and a == 2:
         # reached destination
-        x1 = x
-        y1 = y + 1
+        next_x = x
+        next_y = y + 1
         state = 1
-        return x1, y1, state
+        return next_x, next_y, state
     else:
         if a == 0:
-            x1 = x
-            y1 = y - 1
+            next_x = x
+            next_y = y - 1
         elif a == 1:
-            x1 = x + 1
-            y1 = y
+            next_x = x + 1
+            next_y = y
         elif a == 2:
-            x1 = x
-            y1 = y + 1
+            next_x = x
+            next_y = y + 1
         elif a == 3:
-            x1 = x - 1
-            y1 = y
-        if x1 < 0:
-            x1 = 0
-        if x1 > ncols - 1:
-            x1 = ncols - 1
-        if y1 < 0:
-            y1 = 0
-        if y1 > nrows - 1:
+            next_x = x - 1
+            next_y = y
+        if next_x < 0:
+            next_x = 0
+        if next_x > ncols - 1:
+            next_x = ncols - 1
+        if next_y < 0:
+            next_y = 0
+        if next_y > nrows - 1:
             state = 2
-        return x1, y1, state
+        return next_x, next_y, state
 
 
 def exploit(x, y, Q):
@@ -108,25 +108,25 @@ def bellman(x, y, a, reward, Qs1a1, Q):
     return Q
 
 
-def max_Q(x, y, Q):
-    a = np.argmax(Q[y, x, :])
-    return Q[y, x, a]
+def max_Q(x, y, Q_table):
+    a = np.argmax(Q_table[y, x, :])
+    return Q_table[y, x, a]
 
 
-def explore_exploit(x, y, Q):
+def explore_exploit(x, y, Q_table):
     # if we end up at the start location, then exploit
     if x == 0 and y == nrows:
-        a = 0
-        return a
+        action = 0
+        return action
 
     r = np.random.uniform()
     if r < epsilon:
         # explore
-        a = random_action()
+        action = random_action()
     else:
         # exploit
-        a = exploit(x, y, Q)
-    return a
+        action = exploit(x, y, Q_table)
+    return action
 
 
 # ---------------------------------------------------
@@ -136,39 +136,39 @@ for n in range(nepisodes + 1):
         print("episode #: ", n)
     x, y = go_to_start()
 
-    a = explore_exploit(x, y, Q)
+    chosen_action = explore_exploit(x, y, Q_lookup)
 
     while True:
-        x1, y1, state = move(x, y, a)
+        next_x, next_y, state = move(x, y, chosen_action)
         if state == 1:
             reward = reward_destination
-            Qs1a1 = 0.0
-            Q = bellman(x, y, a, reward, Qs1a1, Q)
+            value_for_current_state = 0.0
+            Q_lookup = bellman(x, y, chosen_action, reward, value_for_current_state, Q_lookup)
             break
         elif state == 2:
             reward = reward_cliff
-            Qs1a1 = 0.0
-            Q = bellman(x, y, a, reward, Qs1a1, Q)
+            value_for_current_state = 0.0
+            Q_lookup = bellman(x, y, chosen_action, reward, value_for_current_state, Q_lookup)
             break
         elif state == 0:
             reward = reward_normal
             # Sarsa
-            a1 = explore_exploit(x1, y1, Q)
-            if x1 == 0 and y1 == nrows:
+            next_chosen_action = explore_exploit(next_x, next_y, Q_lookup)
+            if next_x == 0 and next_y == nrows:
                 # start location
-                Qs1a1 = 0.0
+                value_for_current_state = 0.0
             else:
-                Qs1a1 = Q[y1, x1, a1]
+                value_for_current_state = Q_lookup[next_y, next_x, next_chosen_action]
 
-            Q = bellman(x, y, a, reward, Qs1a1, Q)
-            x = x1
-            y = y1
-            a = a1
+            Q_lookup = bellman(x, y, chosen_action, reward, value_for_current_state, Q_lookup)
+            x = next_x
+            y = next_y
+            chosen_action = next_chosen_action
 
         # ---------------------------------------------------
 for i in range(nact):
     plt.subplot(nact, 1, i + 1)
-    plt.imshow(Q[:, :, i])
+    plt.imshow(Q_lookup[:, :, i])
     plt.axis('off')
     plt.colorbar()
     if i == 0:
@@ -190,15 +190,15 @@ path = np.zeros((nrows, ncols, nact), dtype=np.float)
 
 x, y = go_to_start()
 while True:
-    a = exploit(x, y, Q)
-    print(x, y, a)
-    x1, y1, state = move(x, y, a)
+    chosen_action = exploit(x, y, Q_lookup)
+    print(x, y, chosen_action)
+    next_x, next_y, state = move(x, y, chosen_action)
     if state == 1 or state == 2:
         print("breaking ", state)
         break
     elif state == 0:
-        x = x1
-        y = y1
+        x = next_x
+        y = next_y
         if 0 <= x <= ncols - 1 and 0 <= y <= nrows - 1:
             path[y, x] = 100.0
 
