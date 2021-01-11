@@ -1,0 +1,2 @@
+model_checkpoint_path: "C:\\Users\\Rick\\PycharmProjects\\TensorFlow-Reinforcement-Learning-Quick-Start-Guide\\Chapter03\\experiments\\BreakoutDeterministic-v4\\ckpt\\model"
+all_model_checkpoint_paths: "C:\\Users\\Rick\\PycharmProjects\\TensorFlow-Reinforcement-Learning-Quick-Start-Guide\\Chapter03\\experiments\\BreakoutDeterministic-v4\\ckpt\\model"

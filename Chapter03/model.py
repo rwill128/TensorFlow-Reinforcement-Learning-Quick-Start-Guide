@@ -3,42 +3,34 @@ import sys
 import os
 import random
 import tensorflow as tf
-from tensorflow.python.layers.convolutional import conv2d
-from tensorflow.python.layers.core import flatten, fully_connected
-from tensorflow.python.ops.array_ops import placeholder
-from tensorflow.python.ops.init_ops_v2 import variance_scaling_initializer
-from tensorflow.python.ops.math_ops import to_float, squared_difference
-from tensorflow.python.ops.variable_scope import variable_scope
-from tensorflow.python.training.adam import AdamOptimizer
-from tensorflow.python.training.training_util import get_global_step
 
 NET = 'bigger'  # 'smaller'
 
 LOSS = 'huber'  # 'L2'
 
-winit = variance_scaling_initializer(scale=2)  # tf.contrib.layers.xavier_initializer()
+winit = tf.variance_scaling_initializer(scale=2)  # tf.contrib.layers.xavier_initializer()
 
 
 # --------------------------------------------------------------------------------------------------
 
 
-class QNetwork:
+class QNetwork():
     def __init__(self, scope="QNet", VALID_ACTIONS=[0, 1, 2, 3]):
         self.scope = scope
         self.VALID_ACTIONS = VALID_ACTIONS
-        with variable_scope(scope):
+        with tf.variable_scope(scope):
             self._build_model()
 
     def _build_model(self):
         # input placeholders; input is 4 frames of shape 84x84 
-        self.tf_X = placeholder(shape=[None, 84, 84, 4], dtype=tf.uint8, name="X")
+        self.tf_X = tf.placeholder(shape=[None, 84, 84, 4], dtype=tf.uint8, name="X")
         # TD
-        self.tf_y = placeholder(shape=[None], dtype=tf.float32, name="y")
+        self.tf_y = tf.placeholder(shape=[None], dtype=tf.float32, name="y")
         # action
-        self.tf_actions = placeholder(shape=[None], dtype=tf.int32, name="actions")
+        self.tf_actions = tf.placeholder(shape=[None], dtype=tf.int32, name="actions")
 
         # normalize input
-        X = to_float(self.tf_X) / 255.0
+        X = tf.to_float(self.tf_X) / 255.0
         batch_size = tf.shape(self.tf_X)[0]
 
         # -------------
@@ -48,13 +40,16 @@ class QNetwork:
             # bigger net
 
             # 3 conv layers
-            conv1 = conv2d(X, 32, 8, 4, padding='VALID', activation=tf.nn.relu, kernel_initializer=winit)
-            conv2 = conv2d(conv1, 64, 4, 2, padding='VALID', activation=tf.nn.relu, kernel_initializer=winit)
-            conv3 = conv2d(conv2, 64, 3, 1, padding='VALID', activation=tf.nn.relu, kernel_initializer=winit)
+            conv1 = tf.contrib.layers.conv2d(X, 32, 8, 4, padding='VALID', activation_fn=tf.nn.relu,
+                                             weights_initializer=winit)
+            conv2 = tf.contrib.layers.conv2d(conv1, 64, 4, 2, padding='VALID', activation_fn=tf.nn.relu,
+                                             weights_initializer=winit)
+            conv3 = tf.contrib.layers.conv2d(conv2, 64, 3, 1, padding='VALID', activation_fn=tf.nn.relu,
+                                             weights_initializer=winit)
 
             # fully connected layers
-            flattened = flatten(conv3)
-            fc1 = fully_connected(flattened, 512, activation=tf.nn.relu, kernel_initializer=winit)
+            flattened = tf.contrib.layers.flatten(conv3)
+            fc1 = tf.contrib.layers.fully_connected(flattened, 512, activation_fn=tf.nn.relu, weights_initializer=winit)
 
 
         elif NET == 'smaller':
@@ -62,31 +57,34 @@ class QNetwork:
             # smaller net
 
             # 2 conv layers
-            conv1 = conv2d(X, 16, 8, 4, padding='VALID', activation=tf.nn.relu, kernel_initializer=winit)
-            conv2 = conv2d(conv1, 32, 4, 2, padding='VALID', activation=tf.nn.relu, kernel_initializer=winit)
+            conv1 = tf.contrib.layers.conv2d(X, 16, 8, 4, padding='VALID', activation_fn=tf.nn.relu,
+                                             weights_initializer=winit)
+            conv2 = tf.contrib.layers.conv2d(conv1, 32, 4, 2, padding='VALID', activation_fn=tf.nn.relu,
+                                             weights_initializer=winit)
 
             # fully connected layers
-            flattened = flatten(conv2)
-            fc1 = fully_connected(flattened, 256, activation=tf.nn.relu, kernel_initializer=winit)
+            flattened = tf.contrib.layers.flatten(conv2)
+            fc1 = tf.contrib.layers.fully_connected(flattened, 256, activation_fn=tf.nn.relu, weights_initializer=winit)
         # -------------
 
         # Q(s,a)
-        self.predictions = fully_connected(fc1, len(self.VALID_ACTIONS), activation=None, kernel_initializer=winit)
+        self.predictions = tf.contrib.layers.fully_connected(fc1, len(self.VALID_ACTIONS), activation_fn=None,
+                                                             weights_initializer=winit)
 
         action_one_hot = tf.one_hot(self.tf_actions, tf.shape(self.predictions)[1], 1.0, 0.0, name='action_one_hot')
         self.action_predictions = tf.reduce_sum(self.predictions * action_one_hot, axis=1, name='act_pred')
 
         if LOSS == 'L2':
             # L2 loss
-            self.loss = tf.reduce_mean(squared_difference(self.tf_y, self.action_predictions), name='loss')
+            self.loss = tf.reduce_mean(tf.squared_difference(self.tf_y, self.action_predictions), name='loss')
         elif LOSS == 'huber':
             # Huber loss
             self.loss = tf.reduce_mean(huber_loss(self.tf_y - self.action_predictions), name='loss')
 
         # optimizer 
         # self.optimizer = tf.train.RMSPropOptimizer(learning_rate=0.00025, momentum=0.95, epsilon=0.01)
-        self.optimizer = AdamOptimizer(learning_rate=2e-5)
-        self.train_op = self.optimizer.minimize(self.loss, global_step=get_global_step())
+        self.optimizer = tf.train.AdamOptimizer(learning_rate=2e-5)
+        self.train_op = self.optimizer.minimize(self.loss, global_step=tf.contrib.framework.get_global_step())
 
     def predict(self, sess, s):
         return sess.run(self.predictions, {self.tf_X: s})

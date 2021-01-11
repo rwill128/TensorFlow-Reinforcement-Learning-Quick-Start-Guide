@@ -8,15 +8,9 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 from collections import deque, namedtuple
 
-from tensorflow.python.client.session import Session
-from tensorflow.python.framework.ops import reset_default_graph, disable_eager_execution
-from tensorflow.python.ops.variables import global_variables_initializer
-from tensorflow.python.training.saver import Saver
-
 from model import *
 from funcs import *
 
-disable_eager_execution()
 # ----------------------------------------------------------------------------------
 
 GAME = "BreakoutDeterministic-v4"  # "BreakoutDeterministic-v0"
@@ -240,7 +234,7 @@ def deep_q_learning(sess, env, q_net, target_net, state_processor, num_episodes,
 
 # ----------------------------------------------------------------------------------
 
-reset_default_graph()
+tf.reset_default_graph()
 
 # Q and target networks
 q_net = QNetwork(scope="q", VALID_ACTIONS=VALID_ACTIONS)
@@ -250,16 +244,16 @@ target_net = QNetwork(scope="target_q", VALID_ACTIONS=VALID_ACTIONS)
 state_processor = ImageProcess()
 
 # tf saver
-saver = Saver()
+saver = tf.train.Saver()
 
-with Session() as sess:
+with tf.Session() as sess:
     # load model/ initialize model
     if (train_or_test == 'train' and train_from_scratch == False) or train_or_test == 'test':
         latest_checkpoint = tf.train.latest_checkpoint(checkpoint_dir)
         print("loading model ckpt {}...\n".format(latest_checkpoint))
         saver.restore(sess, latest_checkpoint)
     elif train_or_test == 'train' and train_from_scratch == True:
-        sess.run(global_variables_initializer())
+        sess.run(tf.global_variables_initializer())
 
         # run
     deep_q_learning(sess, env, q_net=q_net, target_net=target_net, state_processor=state_processor, num_episodes=25000,
