@@ -8,6 +8,11 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 from collections import deque, namedtuple
 
+from tensorflow.python.client.session import Session
+from tensorflow.python.framework.ops import reset_default_graph
+from tensorflow.python.ops.variables import global_variables_initializer
+from tensorflow.python.training.saver import Saver
+
 from model import *
 from funcs import *
 
@@ -82,25 +87,25 @@ def deep_q_learning(sess, env, q_net, target_net, state_processor, num_episodes,
     policy = epsilon_greedy_policy(q_net, len(VALID_ACTIONS))
 
     # populate replay memory
-    if (train_or_test == 'train'):
+    if train_or_test == 'train':
         print("populating replay memory")
         replay_memory = populate_replay_mem(sess, env, state_processor, replay_memory_init_size, policy, epsilon_start,
                                             epsilon_end[0], epsilon_decay_steps[0], VALID_ACTIONS, Transition)
 
     # epsilon start
-    if (train_or_test == 'train'):
+    if train_or_test == 'train':
         delta_epsilon1 = (epsilon_start - epsilon_end[0]) / float(epsilon_decay_steps[0])
         delta_epsilon2 = (epsilon_end[0] - epsilon_end[1]) / float(epsilon_decay_steps[1])
-        if (train_from_scratch == True):
+        if train_from_scratch:
             epsilon = epsilon_start
         else:
-            if (start_iter <= epsilon_decay_steps[0]):
+            if start_iter <= epsilon_decay_steps[0]:
                 epsilon = max(epsilon_start - float(start_iter) * delta_epsilon1, epsilon_end[0])
-            elif (start_iter > epsilon_decay_steps[0] and start_iter < epsilon_decay_steps[0] + epsilon_decay_steps[1]):
+            elif start_iter > epsilon_decay_steps[0] and start_iter < epsilon_decay_steps[0] + epsilon_decay_steps[1]:
                 epsilon = max(epsilon_end[0] - float(start_iter) * delta_epsilon2, epsilon_end[1])
             else:
                 epsilon = epsilon_end[1]
-    elif (train_or_test == 'test'):
+    elif train_or_test == 'test':
         epsilon = epsilon_end[1]
 
     # total number of time steps
@@ -127,11 +132,11 @@ def deep_q_learning(sess, env, q_net, target_net, state_processor, num_episodes,
 
         while True:
 
-            if (train_or_test == 'train'):
+            if train_or_test == 'train':
                 # epsilon = max(epsilon - delta_epsilon, epsilon_end)
-                if (total_t <= epsilon_decay_steps[0]):
+                if total_t <= epsilon_decay_steps[0]:
                     epsilon = max(epsilon - delta_epsilon1, epsilon_end[0])
-                elif (total_t >= epsilon_decay_steps[0] and total_t <= epsilon_decay_steps[0] + epsilon_decay_steps[1]):
+                elif total_t >= epsilon_decay_steps[0] and total_t <= epsilon_decay_steps[0] + epsilon_decay_steps[1]:
                     epsilon = epsilon_end[0] - (epsilon_end[0] - epsilon_end[1]) / float(
                         epsilon_decay_steps[1]) * float(total_t - epsilon_decay_steps[0])
                     epsilon = max(epsilon, epsilon_end[1])
@@ -144,19 +149,19 @@ def deep_q_learning(sess, env, q_net, target_net, state_processor, num_episodes,
                     print("\n copied params from Q net to target net ")
 
             time_to_fire = False
-            if (time_steps == 0 or ale_lives != info_ale_lives):
+            if time_steps == 0 or ale_lives != info_ale_lives:
                 # new game or new life
                 steps_in_this_life = 0
                 num_no_ops_this_life = np.random.randint(low=0, high=7)
                 action_probs = [0.0, 1.0, 0.0, 0.0]  # fire
                 time_to_fire = True
-                if (ale_lives != info_ale_lives):
+                if ale_lives != info_ale_lives:
                     ale_lives = info_ale_lives
             else:
                 action_probs = policy(sess, state, epsilon)
 
             steps_in_this_life += 1
-            if (steps_in_this_life < num_no_ops_this_life and not time_to_fire):
+            if steps_in_this_life < num_no_ops_this_life and not time_to_fire:
                 # no-op
                 action_probs = [1.0, 0.0, 0.0, 0.0]  # no-op
 
@@ -183,7 +188,7 @@ def deep_q_learning(sess, env, q_net, target_net, state_processor, num_episodes,
             episode_rewards += reward
             time_steps += 1
 
-            if (train_or_test == 'train'):
+            if train_or_test == 'train':
 
                 # if replay memory is full, pop the first element
                 if len(replay_memory) == replay_memory_size:
@@ -191,7 +196,7 @@ def deep_q_learning(sess, env, q_net, target_net, state_processor, num_episodes,
 
                 # save transition to replay memory
                 # done = True in replay memory for every loss of life 
-                if (ale_lives == info_ale_lives):
+                if ale_lives == info_ale_lives:
                     replay_memory.append(Transition(state, action, reward, next_state, done))
                 else:
                     # print('loss of life ')
@@ -207,7 +212,7 @@ def deep_q_learning(sess, env, q_net, target_net, state_processor, num_episodes,
                 targets_batch = reward_batch + np.invert(done_batch).astype(np.float32) * gamma * greedy_q
 
                 # update net 
-                if (total_t % 4 == 0):
+                if total_t % 4 == 0:
                     states_batch = np.array(states_batch)
                     loss = q_net.update(sess, states_batch, action_batch, targets_batch)
 
@@ -218,14 +223,14 @@ def deep_q_learning(sess, env, q_net, target_net, state_processor, num_episodes,
             state = next_state
             total_t += 1
 
-        if (train_or_test == 'train'):
+        if train_or_test == 'train':
             print('\n Eisode: ', ep, '| time steps: ', time_steps, '| total episode reward: ', episode_rewards,
                   '| total_t: ', total_t, '| epsilon: ', epsilon, '| replay mem size: ', len(replay_memory))
-        elif (train_or_test == 'test'):
+        elif train_or_test == 'test':
             print('\n Eisode: ', ep, '| time steps: ', time_steps, '| total episode reward: ', episode_rewards,
                   '| total_t: ', total_t, '| epsilon: ', epsilon)
 
-        if (train_or_test == 'train'):
+        if train_or_test == 'train':
             f = open("experiments/" + str(env.spec.id) + "/performance.txt", "a+")
             f.write(str(ep) + " " + str(time_steps) + " " + str(episode_rewards) + " " + str(total_t) + " " + str(
                 epsilon) + '\n')
@@ -234,7 +239,7 @@ def deep_q_learning(sess, env, q_net, target_net, state_processor, num_episodes,
 
 # ----------------------------------------------------------------------------------
 
-tf.reset_default_graph()
+reset_default_graph()
 
 # Q and target networks
 q_net = QNetwork(scope="q", VALID_ACTIONS=VALID_ACTIONS)
@@ -244,16 +249,16 @@ target_net = QNetwork(scope="target_q", VALID_ACTIONS=VALID_ACTIONS)
 state_processor = ImageProcess()
 
 # tf saver
-saver = tf.train.Saver()
+saver = Saver()
 
-with tf.Session() as sess:
+with Session() as sess:
     # load model/ initialize model
-    if ((train_or_test == 'train' and train_from_scratch == False) or train_or_test == 'test'):
+    if (train_or_test == 'train' and train_from_scratch == False) or train_or_test == 'test':
         latest_checkpoint = tf.train.latest_checkpoint(checkpoint_dir)
         print("loading model ckpt {}...\n".format(latest_checkpoint))
         saver.restore(sess, latest_checkpoint)
-    elif (train_or_test == 'train' and train_from_scratch == True):
-        sess.run(tf.global_variables_initializer())
+    elif train_or_test == 'train' and train_from_scratch == True:
+        sess.run(global_variables_initializer())
 
         # run
     deep_q_learning(sess, env, q_net=q_net, target_net=target_net, state_processor=state_processor, num_episodes=25000,
