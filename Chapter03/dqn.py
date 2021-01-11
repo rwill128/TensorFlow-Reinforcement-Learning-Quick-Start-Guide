@@ -96,7 +96,7 @@ def deep_q_learning(sess, env, q_net, target_net, state_processor, num_episodes,
         else:
             if start_iter <= epsilon_decay_steps[0]:
                 epsilon = max(epsilon_start - float(start_iter) * delta_epsilon1, epsilon_end[0])
-            elif start_iter > epsilon_decay_steps[0] and start_iter < epsilon_decay_steps[0] + epsilon_decay_steps[1]:
+            elif epsilon_decay_steps[0] < start_iter < epsilon_decay_steps[0] + epsilon_decay_steps[1]:
                 epsilon = max(epsilon_end[0] - float(start_iter) * delta_epsilon2, epsilon_end[1])
             else:
                 epsilon = epsilon_end[1]
@@ -256,9 +256,9 @@ with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
 
         # run
-    deep_q_learning(sess, env, q_net=q_net, target_net=target_net, state_processor=state_processor, num_episodes=25000,
+    deep_q_learning(sess, env, q_net=q_net, target_net=target_net, state_processor=state_processor, num_episodes=50,
                     train_or_test=train_or_test, train_from_scratch=train_from_scratch, start_iter=start_iter,
                     start_episode=start_episode,
-                    replay_memory_size=300000, replay_memory_init_size=5000, update_target_net_every=10000,
+                    replay_memory_size=300, replay_memory_init_size=5, update_target_net_every=10,
                     gamma=0.99, epsilon_start=epsilon_start, epsilon_end=[0.1, 0.01], epsilon_decay_steps=[1e6, 1e6],
-                    batch_size=32)
+                    batch_size=5)
