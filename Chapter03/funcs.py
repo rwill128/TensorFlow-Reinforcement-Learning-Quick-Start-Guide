@@ -39,7 +39,7 @@ def copy_model_parameters(sess, qnet1, qnet2):
 def epsilon_greedy_policy(qnet, num_actions):
     def policy_fn(sess, observation, epsilon):
         if np.random.rand() < epsilon:
-            # explore: equal probabiities for all actions
+            # explore: equal probabilities for all actions
             A = np.ones(num_actions, dtype=float) / float(num_actions)
         else:
             # exploit

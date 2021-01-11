@@ -137,7 +137,7 @@ def deep_q_learning(sess, env, q_net, target_net, state_processor, num_episodes,
                 # epsilon = max(epsilon - delta_epsilon, epsilon_end)
                 if total_t <= epsilon_decay_steps[0]:
                     epsilon = max(epsilon - delta_epsilon1, epsilon_end[0])
-                elif total_t >= epsilon_decay_steps[0] and total_t <= epsilon_decay_steps[0] + epsilon_decay_steps[1]:
+                elif epsilon_decay_steps[0] <= total_t <= epsilon_decay_steps[0] + epsilon_decay_steps[1]:
                     epsilon = epsilon_end[0] - (epsilon_end[0] - epsilon_end[1]) / float(
                         epsilon_decay_steps[1]) * float(total_t - epsilon_decay_steps[0])
                     epsilon = max(epsilon, epsilon_end[1])
