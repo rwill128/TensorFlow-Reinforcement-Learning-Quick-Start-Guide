@@ -9,13 +9,14 @@ import tensorflow as tf
 from collections import deque, namedtuple
 
 from tensorflow.python.client.session import Session
-from tensorflow.python.framework.ops import reset_default_graph
+from tensorflow.python.framework.ops import reset_default_graph, disable_eager_execution
 from tensorflow.python.ops.variables import global_variables_initializer
 from tensorflow.python.training.saver import Saver
 
 from model import *
 from funcs import *
 
+disable_eager_execution()
 # ----------------------------------------------------------------------------------
 
 GAME = "BreakoutDeterministic-v4"  # "BreakoutDeterministic-v0"

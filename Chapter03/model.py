@@ -48,13 +48,13 @@ class QNetwork:
             # bigger net
 
             # 3 conv layers
-            conv1 = conv2d(X, 32, 8, 4, padding='VALID', activation_fn=tf.nn.relu, weights_initializer=winit)
-            conv2 = conv2d(conv1, 64, 4, 2, padding='VALID', activation_fn=tf.nn.relu, weights_initializer=winit)
-            conv3 = conv2d(conv2, 64, 3, 1, padding='VALID', activation_fn=tf.nn.relu, weights_initializer=winit)
+            conv1 = conv2d(X, 32, 8, 4, padding='VALID', activation=tf.nn.relu, kernel_initializer=winit)
+            conv2 = conv2d(conv1, 64, 4, 2, padding='VALID', activation=tf.nn.relu, kernel_initializer=winit)
+            conv3 = conv2d(conv2, 64, 3, 1, padding='VALID', activation=tf.nn.relu, kernel_initializer=winit)
 
             # fully connected layers
             flattened = flatten(conv3)
-            fc1 = fully_connected(flattened, 512, activation_fn=tf.nn.relu, weights_initializer=winit)
+            fc1 = fully_connected(flattened, 512, activation=tf.nn.relu, kernel_initializer=winit)
 
 
         elif NET == 'smaller':
@@ -62,19 +62,19 @@ class QNetwork:
             # smaller net
 
             # 2 conv layers
-            conv1 = conv2d(X, 16, 8, 4, padding='VALID', activation_fn=tf.nn.relu, weights_initializer=winit)
-            conv2 = conv2d(conv1, 32, 4, 2, padding='VALID', activation_fn=tf.nn.relu, weights_initializer=winit)
+            conv1 = conv2d(X, 16, 8, 4, padding='VALID', activation=tf.nn.relu, kernel_initializer=winit)
+            conv2 = conv2d(conv1, 32, 4, 2, padding='VALID', activation=tf.nn.relu, kernel_initializer=winit)
 
             # fully connected layers
             flattened = flatten(conv2)
-            fc1 = fully_connected(flattened, 256, activation_fn=tf.nn.relu, weights_initializer=winit)
+            fc1 = fully_connected(flattened, 256, activation=tf.nn.relu, kernel_initializer=winit)
         # -------------
 
         # Q(s,a)
-        self.predictions = fully_connected(fc1, len(self.VALID_ACTIONS), activation_fn=None, weights_initializer=winit)
+        self.predictions = fully_connected(fc1, len(self.VALID_ACTIONS), activation=None, kernel_initializer=winit)
 
         action_one_hot = tf.one_hot(self.tf_actions, tf.shape(self.predictions)[1], 1.0, 0.0, name='action_one_hot')
-        self.action_predictions = tf.reduce_sum(self.predictions * action_one_hot, reduction_indices=1, name='act_pred')
+        self.action_predictions = tf.reduce_sum(self.predictions * action_one_hot, axis=1, name='act_pred')
 
         if LOSS == 'L2':
             # L2 loss
